@@ -19,7 +19,9 @@ strip = neopixel.NeoPixel(pixel_pin, numpix, brightness=0.3, auto_write=False)
 max_len = 20
 min_len = 5
 num_flashes = 10
-master_brightness = 0.3
+master_brightness = 1.0
+
+mode = 0
 
 pin8 = DigitalInOut(board.IO8)
 pin8.direction = Direction.OUTPUT
@@ -124,12 +126,14 @@ def ffs(run_time, current_colors, delay):
     while time.monotonic() - start_time < run_time or run_time == 1000:
         if not btn1.value:
             return 1
+        if not btn2.value:
+            return 2
         strip.show()
         for i in range(num_flashes):
             pix = flashing[i][0]
             brightness = flashing[i][3] / flashing[i][2]
             color = flashing[i][1]
-            scaled_color = tuple(int(c * brightness) for c in color)
+            scaled_color = tuple(int(c * brightness)*master_brightness for c in color)
             strip[pix] = scaled_color
 
             # Reverse if at peak
@@ -148,12 +152,12 @@ def ffs(run_time, current_colors, delay):
         time.sleep(delay)
     return 0
 
-def color_chase(device, color, wait):
+def color_chase(device, color, wait=0.05):
     for i in range(numpix):
         device[i] = color
         time.sleep(wait)
         device.show()
-    time.sleep(0.5)
+    time.sleep(0.2)
 
 
 def rainbow_cycle(device, wait):
@@ -172,9 +176,6 @@ CYAN = (0, 255, 255)
 BLUE = (0, 0, 255)
 PURPLE = (180, 0, 255)
 
-ffs(1, colors_ww, 0.04)
-
-mode = 1
 
 def breath(cols=colors_red):
     """doesnt need anything, takes in strip(obj), color SET, blink time, steps
@@ -191,7 +192,10 @@ def breath(cols=colors_red):
         current_col = random.choice(cols)
         #print(current_col)
         for step in range(numsteps):
-            
+            if not btn1.value:
+                return 1
+            if not btn2.value:
+                return 2
             scaled_color = tuple(int(c * (sin(pi * (step / numsteps)))*master_brightness) for c in current_col)
             
             for pix in range(numpix):
@@ -202,35 +206,64 @@ def breath(cols=colors_red):
             time.sleep(delay)
             
 
-while True: 
-    if mode == 1:
-        ret_value = ffs(5, colors_red, 0.035)
-        if ret_value == 1:
-            print(bool(ret_value))
+def handle_return(value):
+    ''' takes in return value, devices what to do and modifies global var'''
+    global mode, master_brightness
+    
+    if not value: #no press
+        return
+    if value == 1: #mode switch pressed
+        if mode == 0:
+            mode = 1
+            color_chase(strip, orange)
+            time.sleep(0.3)
+        elif mode == 1:
             mode = 2
             time.sleep(0.3)
-        '''if random.choice([True, False]):
-            breath(colors_red)'''
-    
-    elif mode == 2:
-        ret_value = ffs(5, colors_ww, 0.04)
-        if ret_value == 1:
+        elif mode == 2:
             mode = 0
+            color_chase(strip, colors_ppb[0])
             time.sleep(0.3)
     
+    if value == 2: #brightness toggle pressed
+        if master_brightness == 0.3:
+            master_brightness = 1.0
+            color_chase(strip, warm_white)
+        elif master_brightness == 1.0:
+            master_brightness = 0.3
+            color_chase(strip, (0,0,0))
+            print(master_brightness)
+
+while True: 
+    if mode == 1:
+        rand_mode = random.choice([0,0,0,0,1,1,2])
+        
+        if rand_mode ==0:
+            #ret_value = ffs(5, colors_red, 0.035)
+            
+            handle_return(ffs(5, colors_red, 0.035))
+        
+        if rand_mode == 1:
+            handle_return(breath(colors_red))
+            
+        if rand_mode == 2:
+            for color in colors_red:
+                color_chase(strip, color)
+    
+    elif mode == 2:
+        handle_return(ffs(5, colors_ww, 0.04))
     
     else:
-        current_mode = random.choice([0,0,0,0,0,1,2,2,2])
+        rand_mode = random.choice([0,0,0,0,0,1,2,2,2])
         
-        if current_mode == 0:
-            ret_value = ffs(5, colors_ww, 0.04)
-            if ret_value == 1:
-                mode = 1
+        if rand_mode == 0:
+            handle_return(ffs(5, colors_ww, 0.04))
+            
         
-        elif current_mode == 1:
-            breath(colors_pastel)
+        elif rand_mode == 1:
+            handle_return(breath(colors_pastel))
         
-        elif current_mode == 2:
+        elif rand_mode == 2:
             run_time = random.randint(4,20)
     
             current_colors = random.choice(color_sets)
@@ -238,9 +271,5 @@ while True:
             delay = random.choice([0.01, 0.015, 0.015, 0.025])
             if run_time > 8:
                 delay = 0.035
-            ret_value = ffs(run_time, current_colors, delay)
-            if ret_value:
-                mode = 1
-                time.sleep(0.3)
-
+            handle_return(ffs(run_time, current_colors, delay))
 
