@@ -45,6 +45,14 @@ GAMMA = bytes([int((i / 255) ** 2.6 * 255 + 0.5) for i in range(256)])
 def apply_gamma(r, g, b):
     return (GAMMA[r], GAMMA[g], GAMMA[b])
 
+
+RED = (255, 0, 0)
+YELLOW = (255, 150, 0)
+GREEN = (0, 255, 0)
+CYAN = (0, 255, 255)
+BLUE = (0, 0, 255)
+PURPLE = (180, 0, 255)
+
 white = (255, 255, 255)
 
 red = (250, 2, 2)
@@ -71,7 +79,7 @@ colors_rainbow = [
 ]
 
 warm_white = (150, 70, 20)
-colors_ww = [warm_white]
+colors_ww = [warm_white] #this is needed by breath() and ffs()
 
 #from fireflies.py
 colors_ffs = [
@@ -154,6 +162,12 @@ def ffs(run_time, current_colors, delay):
 
 def color_chase(device, color, wait=0.05):
     for i in range(numpix):
+        if not btn1.value:
+            return 1
+        elif not btn2.value:
+            return 2
+        else:
+            pass
         device[i] = color
         time.sleep(wait)
         device.show()
@@ -163,21 +177,16 @@ def color_chase(device, color, wait=0.05):
 def rainbow_cycle(device, wait):
     for j in range(255):
         for i in range(numpix):
+            if not btn1.value:
+                return 1
+            if not btn2.value:
+                return 2
             rc_index = (i * 256 // numpix) + j
             device[i] = colorwheel(rc_index & 255)
         device.show()
         time.sleep(wait)
 
-
-RED = (255, 0, 0)
-YELLOW = (255, 150, 0)
-GREEN = (0, 255, 0)
-CYAN = (0, 255, 255)
-BLUE = (0, 0, 255)
-PURPLE = (180, 0, 255)
-
-
-def breath(cols=colors_red):
+def breath(cols=colors_red, num_flashes=None):
     """doesnt need anything, takes in strip(obj), color SET, blink time, steps
     max brightness scaled to balance out the effect"""
     global master_brightness
@@ -188,7 +197,10 @@ def breath(cols=colors_red):
     
     strip.fill((0,0,0))
     strip.show()
-    for i in range(random.randint(1, 5)):
+    if not num_flashes:
+        num_flashes = random.randint(1, 5)
+    
+    for i in range(num_flashes):
         current_col = random.choice(cols)
         #print(current_col)
         for step in range(numsteps):
@@ -204,10 +216,27 @@ def breath(cols=colors_red):
             #print(strip.get_pixel(1))
             strip.show()
             time.sleep(delay)
-            
+
+
+def smooth_brightness(col, initB, endB, intime=0.5, numsteps=20):
+    delay = intime/numsteps
+    stepwidth = (endB - initB)/numsteps
+    strip.fill(tuple(round(c*initB) for c in col))
+    brightness = initB
+    for step in range(numsteps):
+        if not btn1.value:
+            return 1
+        if not btn2.value:
+            return 2
+        brightness += stepwidth
+        scaled_color = tuple(int(c * brightness) for c in col)
+        strip.fill(scaled_color)
+        strip.show()
+        
+        time.sleep(delay)
 
 def handle_return(value):
-    ''' takes in return value, devices what to do and modifies global var'''
+    ''' handles returns to change mode and brightness'''
     global mode, master_brightness
     
     if not value: #no press
@@ -215,24 +244,34 @@ def handle_return(value):
     if value == 1: #mode switch pressed
         if mode == 0:
             mode = 1
-            color_chase(strip, orange)
             time.sleep(0.3)
+            color_chase(strip, orange)
         elif mode == 1:
             mode = 2
             time.sleep(0.3)
+            breath(colors_ww, 1)
+            
         elif mode == 2:
             mode = 0
-            color_chase(strip, colors_ppb[0])
             time.sleep(0.3)
+            color_chase(strip, colors_ppb[0])
     
     if value == 2: #brightness toggle pressed
         if master_brightness == 0.3:
-            master_brightness = 1.0
+            time.sleep(0.2)
             color_chase(strip, warm_white)
+            master_brightness = 1.0
+            if smooth_brightness(warm_white, 0.3, 1.0, 1.0) == 2:
+                mode = 3
+                strip.fill((255,255,255))
+                strip.show()
+                time.sleep(0.3)
+            
         elif master_brightness == 1.0:
+            time.sleep(0.2)
+            color_chase(strip, warm_white)
+            smooth_brightness(warm_white, 1.0, 0.3, 1.0)
             master_brightness = 0.3
-            color_chase(strip, (0,0,0))
-            print(master_brightness)
 
 while True: 
     if mode == 1:
@@ -252,6 +291,12 @@ while True:
     
     elif mode == 2:
         handle_return(ffs(5, colors_ww, 0.04))
+        
+    elif mode == 3:
+        if not btn1.value:
+            mode = 0
+        if not btn2.value:
+            mode = 0
     
     else:
         rand_mode = random.choice([0,0,0,0,0,1,2,2,2])
@@ -272,4 +317,6 @@ while True:
             if run_time > 8:
                 delay = 0.035
             handle_return(ffs(run_time, current_colors, delay))
+
+
 
