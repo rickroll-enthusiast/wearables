@@ -21,7 +21,7 @@ min_len = 5
 num_flashes = 10
 master_brightness = 1.0
 
-mode = 0
+mode = 3
 
 pin8 = DigitalInOut(board.IO8)
 pin8.direction = Direction.OUTPUT
@@ -252,6 +252,10 @@ def handle_return(value):
             breath(colors_ww, 1)
             
         elif mode == 2:
+            mode = 3
+            time.sleep(0.3)
+            
+        elif mode == 3:
             mode = 0
             time.sleep(0.3)
             color_chase(strip, colors_ppb[0])
@@ -262,10 +266,10 @@ def handle_return(value):
             color_chase(strip, warm_white)
             master_brightness = 1.0
             if smooth_brightness(warm_white, 0.3, 1.0, 1.0) == 2:
-                mode = 3
+                mode = "flash"
                 strip.fill((255,255,255))
                 strip.show()
-                time.sleep(0.3)
+                time.sleep(0.4)
             
         elif master_brightness == 1.0:
             time.sleep(0.2)
@@ -273,7 +277,8 @@ def handle_return(value):
             smooth_brightness(warm_white, 1.0, 0.3, 1.0)
             master_brightness = 0.3
 
-while True: 
+while True:
+    print(mode)
     if mode == 1:
         rand_mode = random.choice([0,0,0,0,1,1,2])
         
@@ -292,11 +297,14 @@ while True:
     elif mode == 2:
         handle_return(ffs(5, colors_ww, 0.04))
         
-    elif mode == 3:
+    elif mode == "flash": #flashlight
         if not btn1.value:
             mode = 0
         if not btn2.value:
             mode = 0
+    
+    elif mode == 3:
+        handle_return(rainbow_cycle(strip, 0.2))
     
     else:
         rand_mode = random.choice([0,0,0,0,0,1,2,2,2])
