@@ -2,7 +2,6 @@
 #
 # SPDX-License-Identifier: MIT
 
-"""CircuitPython Essentials NeoPixel example"""
 import time
 import board
 from rainbowio import colorwheel
@@ -45,14 +44,6 @@ GAMMA = bytes([int((i / 255) ** 2.6 * 255 + 0.5) for i in range(256)])
 def apply_gamma(r, g, b):
     return (GAMMA[r], GAMMA[g], GAMMA[b])
 
-
-RED = (255, 0, 0)
-YELLOW = (255, 150, 0)
-GREEN = (0, 255, 0)
-CYAN = (0, 255, 255)
-BLUE = (0, 0, 255)
-PURPLE = (180, 0, 255)
-
 white = (255, 255, 255)
 
 red = (250, 2, 2)
@@ -63,6 +54,7 @@ blue = (20, 30, 245)
 indigo = (75, 0, 130)
 violet = (235, 0, 255)
 pink = (235,80,110)
+off = (0,0,0)
 
 colors = [red, orange, yellow, green, pink, blue, indigo, violet]
 
@@ -77,6 +69,7 @@ colors_rainbow = [
     indigo,
     violet
 ]
+
 
 warm_white = (150, 70, 20)
 colors_ww = [warm_white] #this is needed by breath() and ffs()
@@ -111,6 +104,52 @@ colors_pastel = [apply_gamma(r, g, b) for (r, g, b) in PASTEL_RAW]
 colors_ppb = [apply_gamma(r, g, b) for (r, g, b) in PPB]
 
 color_sets = [colors_pastel, colors_ppb, colors_ffs]
+
+'''flag:
+num strips: just use len flag, to find the number of regions
+
+calculate width of each region, reject excess pixels
+
+for pixel set region color
+
+dicionary in zone:color
+
+'''
+
+femboy = [(255, 10, 30), (235, 45, 35), (210, 210, 180), (85, 160, 255), (210, 210, 180), (235, 45, 35), (255, 10, 30)]
+pride_flag = [red, orange, yellow, green, blue, violet]
+trans_flag = [(85, 150, 255), (235, 45, 35), (210, 210, 180), (235, 45, 35), (85, 150, 255)]
+
+
+def fill_flag(flag, strip=strip, numpix=numpix):
+    """will fail if numpix < lenflag"""
+    strip.fill((0,0,0))
+    
+    num_zones = len(flag)
+    zone_width = numpix // num_zones
+    remainder = numpix % num_zones
+    
+    pre_blank = remainder // 2 #number of pixels to leave blank at start
+    
+    expanded_list = [color for color in flag for _ in range(zone_width)]
+    
+    fill_list = []
+    
+    for pixel in range(pre_blank):
+        fill_list.append((0,0,0))
+    
+    fill_list += expanded_list
+    
+    for pixel, color in enumerate(fill_list):
+        strip[pixel] = color
+    
+    strip.show()
+
+    time.sleep(0.2)
+    if not btn1.value:
+        return 1
+    if not btn2.value:
+        return 2
 
 
 def setup_flash(current_colors):
@@ -279,6 +318,7 @@ def handle_return(value):
 
 while True:
     print(mode)
+    
     if mode == 1:
         rand_mode = random.choice([0,0,0,0,1,1,2])
         
@@ -304,7 +344,9 @@ while True:
             mode = 0
     
     elif mode == 3:
-        handle_return(rainbow_cycle(strip, 0.2))
+        
+        handle_return(fill_flag(femboy))
+        
     
     else:
         rand_mode = random.choice([0,0,0,0,0,1,2,2,2])
@@ -325,6 +367,3 @@ while True:
             if run_time > 8:
                 delay = 0.035
             handle_return(ffs(run_time, current_colors, delay))
-
-
-
